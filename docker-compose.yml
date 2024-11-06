@@ -1,11 +1,10 @@
-version: '3'
-
 x-spark-common: &spark-common
   image: bitnami/spark:3.4.2
   volumes:
     - ./jobs:/opt/bitnami/spark/jobs
   networks:
     - code-with-yu
+  user: root
 
 x-airflow-common: &airflow-common
   build:
@@ -17,10 +16,12 @@ x-airflow-common: &airflow-common
     - ./jobs:/opt/airflow/jobs
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
+    - ./data:/opt/data
   depends_on:
     - postgres
   networks:
     - code-with-yu
+  user: root
 
 services:
   spark-master:
@@ -29,6 +30,8 @@ services:
     ports:
       - "9090:8080"
       - "7077:7077"
+    volumes:
+      - ./data:/opt/data
 
   spark-worker:
     <<: *spark-common
@@ -40,6 +43,8 @@ services:
       SPARK_WORKER_CORES: 2
       SPARK_WORKER_MEMORY: 1g
       SPARK_MASTER_URL: spark://spark-master:7077
+    volumes:
+      - ./data:/opt/data
 
   postgres:
     image: postgres:14.0
