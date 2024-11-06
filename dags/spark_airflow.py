@@ -6,10 +6,10 @@ from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOpe
 dag = DAG(
     dag_id = "sparking_flow",
     default_args = {
-        "owner": "Yusuf Ganiyu",
+        "owner": "Damian Jakub",
         "start_date": airflow.utils.dates.days_ago(1)
     },
-    schedule_interval = "@daily"
+    schedule_interval = None
 )
 
 start = PythonOperator(
@@ -40,6 +40,20 @@ java_job = SparkSubmitOperator(
     dag=dag
 )
 
+partitioning_job = SparkSubmitOperator(
+    task_id="partitioning_job",
+    conn_id="spark-conn",
+    application="jobs/python/partitioning.py",
+        application_args=[
+        '2',
+        '/opt/data/sample',      # input_path
+        '/opt/data/bronze',      # output_path
+        '\t',                    # delimiter
+        'overwrite',             # mode
+        'true'                   # is_header
+    ],
+    dag=dag
+)
 
 end = PythonOperator(
     task_id="end",
@@ -47,4 +61,4 @@ end = PythonOperator(
     dag=dag
 )
 
-start >> [python_job, scala_job, java_job] >> end
+start >> [python_job, scala_job, java_job, partitioning_job] >> end
