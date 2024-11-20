@@ -32,7 +32,7 @@ partitioning_clickstream_job = SparkSubmitOperator(
     application="jobs/python/partitioning_clickstream.py",
         application_args=[
         '2',
-        '/opt/data/sample',                  # input_path
+        '/opt/data/sample/clickstream',      # input_path
         '/opt/data/bronze/clickstream',      # output_path
         '\t',                                # delimiter
         'overwrite',                         # mode
@@ -47,7 +47,7 @@ partitioning_articles_job = SparkSubmitOperator(
     application="jobs/python/partitioning_articles.py",
         application_args=[
         '2',
-        '/opt/data/sample',                  # input_path
+        '/opt/data/sample/articles',         # input_path
         '/opt/data/bronze/articles'          # output_pat
     ],
     dag=dag
