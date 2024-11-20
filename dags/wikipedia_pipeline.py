@@ -53,15 +53,18 @@ partitioning_articles_job = SparkSubmitOperator(
     dag=dag
 )
 
-# cleaning_job = EmptyOperator(
-#     task_id="cleaning_job",
-#     dag=dag
-# )
-
-# normalization_job = EmptyOperator(
-#     task_id="normalization_job",
-#     dag=dag
-# )
+cleaning_clickstream_job = SparkSubmitOperator(
+    task_id="cleaning_clickstream_job",
+    conn_id="spark-conn",
+    application="jobs/python/cleaning_clickstream.py",
+        application_args=[
+        '/opt/data/bronze/clickstream',     # input_path
+        '/opt/data/silver/clicksteam',      # output_path
+        'true',                             # is_header
+        'overwrite'                         # mode
+    ],
+    dag=dag
+)
 
 end = PythonOperator(
     task_id="end",
@@ -69,5 +72,4 @@ end = PythonOperator(
     dag=dag
 )
 
-# start >> health_check >> partitioning_job >> [cleaning_job, normalization_job] >> end
-start >> health_check >> [partitioning_clickstream_job, partitioning_articles_job] >> end
+start >> health_check >> [partitioning_clickstream_job, partitioning_articles_job] >> cleaning_clickstream_job >> end
