@@ -1,6 +1,5 @@
 import airflow
 from airflow import DAG
-from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 
@@ -30,7 +29,7 @@ partitioning_clickstream_job = SparkSubmitOperator(
     task_id="partitioning_clickstream_job",
     conn_id="spark-conn",
     application="jobs/python/partitioning_clickstream.py",
-        application_args=[
+    application_args=[
         '2',
         '/opt/data/sample/clickstream',      # input_path
         '/opt/data/bronze/clickstream',      # output_path
@@ -45,7 +44,7 @@ partitioning_articles_job = SparkSubmitOperator(
     task_id="partitioning_articles_job",
     conn_id="spark-conn",
     application="jobs/python/partitioning_articles.py",
-        application_args=[
+    application_args=[
         '2',
         '/opt/data/sample/articles',         # input_path
         '/opt/data/bronze/articles'          # output_pat
@@ -57,13 +56,34 @@ cleaning_clickstream_job = SparkSubmitOperator(
     task_id="cleaning_clickstream_job",
     conn_id="spark-conn",
     application="jobs/python/cleaning_clickstream.py",
-        application_args=[
-        '/opt/data/bronze/clickstream',     # input_path
-        '/opt/data/silver/clicksteam',      # output_path
-        'true',                             # is_header
-        'overwrite'                         # mode
+    application_args=[
+        '/opt/data/bronze/clickstream',      # input_path
+        '/opt/data/silver/clickstream',      # output_path
+        'true',                              # is_header
+        'overwrite'                          # mode
     ],
     dag=dag
+)
+
+cleaning_articles_job = SparkSubmitOperator(
+    task_id="cleaning_articles_job",
+    conn_id="spark-conn",
+    application="jobs/python/cleaning_articles.py",
+    application_args=[
+        '/opt/data/bronze/articles',         # input_path
+        '/opt/data/silver/articles',         # output_path
+        'overwrite'                          # mode
+    ],
+    dag=dag
+)
+
+length_article_within_topic_job = SparkSubmitOperator(
+    task_id="length_article_within_topic_job",
+    conn_id="spark-conn",
+    application="jobs/python/length_article_within_topic.py",
+    application_args=[
+        '/opt/data/silver/articles'          # path to data
+    ]
 )
 
 end = PythonOperator(
@@ -72,4 +92,15 @@ end = PythonOperator(
     dag=dag
 )
 
-start >> health_check >> [partitioning_clickstream_job, partitioning_articles_job] >> cleaning_clickstream_job >> end
+start >> health_check
+
+partitioning_tasks = [partitioning_clickstream_job, partitioning_articles_job]
+cleaning_tasks = [cleaning_clickstream_job, cleaning_articles_job]
+
+health_check >> partitioning_tasks
+
+for partitioning_task in partitioning_tasks:
+    for cleaning_task in cleaning_tasks:
+        partitioning_task >> cleaning_task
+
+cleaning_tasks >> length_article_within_topic_job >> end

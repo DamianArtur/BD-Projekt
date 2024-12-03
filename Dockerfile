@@ -26,3 +26,5 @@ RUN pip install apache-airflow-providers-google==10.24.0
 RUN pip install apache-airflow-providers-apache-spark==4.11.1
 
 RUN pip install pyspark==3.4.2
+
+RUN pip install numpy pandas scikit-learn

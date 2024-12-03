@@ -1,5 +1,7 @@
 x-spark-common: &spark-common
-  image: bitnami/spark:3.4.2
+  build:
+    context: .
+    dockerfile: Dockerfile-spark
   volumes:
     - ./jobs:/opt/bitnami/spark/jobs
   networks:
