@@ -82,7 +82,8 @@ length_article_within_topic_job = SparkSubmitOperator(
     conn_id="spark-conn",
     application="jobs/python/length_article_within_topic.py",
     application_args=[
-        '/opt/data/silver/articles'          # path to data
+        '/opt/data/silver/clickstream',      # path to clickstream
+        '/opt/data/silver/articles'          # path to articles
     ]
 )
 

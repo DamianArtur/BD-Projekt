@@ -8,11 +8,46 @@ from pyspark.sql.types import StringType
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-data_path = argv[1]
+clickstream_data_path = argv[1]
+articles_data_path = argv[2]
 
 spark = SparkSession.builder.appName("JsonDataCleaning").getOrCreate()
 
-data = spark.read.json(data_path)
+clickstream_data = spark.read.option("header", "true").csv(clickstream_data_path)
+articles_data = spark.read.json(articles_data_path)
+
+print("Clickstream Data Schema:")
+clickstream_data.printSchema()
+
+print("Articles Data Schema:")
+articles_data.printSchema()
+
+articles_prev = articles_data.selectExpr("id as prev_id", "text as prev_text")
+articles_curr = articles_data.selectExpr("id as curr_id", "text as curr_text")
+
+# Perform the joins
+joined_data = (
+    clickstream_data
+    .join(articles_prev, "prev_id", "inner")
+    .join(articles_curr, "curr_id", "inner")
+)
+
+# Select and rename columns
+final_data = joined_data.select(
+    "prev_id",
+    "curr_id",
+    "prev_title",
+    "curr_title",
+    "prev_text",
+    "curr_text"
+)
+
+# Show a sample of the joined data
+final_data.show()
+
+# Count the number of joined rows
+joined_row_count = final_data.count()
+print(f"Number of joined rows: {joined_row_count}")
 
 # List of topics to identification
 topics = [
@@ -52,7 +87,7 @@ classify_topic_udf = udf(lambda vec: classify_topic(vec, topics_vectors, topics)
 tokenizer = Tokenizer(inputCol="text", outputCol="tokens")
 
 # Apply tokenizer to the original DataFrame
-data = tokenizer.transform(data)
+data = tokenizer.transform(articles_data)
 
 # Train Word2Vec Model
 word2vec = Word2Vec(vectorSize=100, minCount=1, inputCol="tokens", outputCol="vector")
