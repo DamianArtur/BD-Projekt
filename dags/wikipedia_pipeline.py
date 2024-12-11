@@ -87,6 +87,16 @@ length_article_within_topic_job = SparkSubmitOperator(
     ]
 )
 
+join_job = SparkSubmitOperator(
+    task_id="join_job",
+    conn_id="spark-conn",
+    application="jobs/python/join.py",
+    application_args=[
+        '/opt/data/silver/clickstream',      # path to clickstream
+        '/opt/data/silver/articles'          # path to articles
+    ]
+)
+
 end = PythonOperator(
     task_id="end",
     python_callable = lambda: print("Jobs completed successfully"),
@@ -104,4 +114,4 @@ for partitioning_task in partitioning_tasks:
     for cleaning_task in cleaning_tasks:
         partitioning_task >> cleaning_task
 
-cleaning_tasks >> length_article_within_topic_job >> end
+cleaning_tasks >> length_article_within_topic_job >> join_job >> end
