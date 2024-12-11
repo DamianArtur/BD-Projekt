@@ -87,6 +87,15 @@ length_article_within_topic_job = SparkSubmitOperator(
     ]
 )
 
+most_frequent_ids = SparkSubmitOperator(
+    task_id="most_frequent_ids",
+    conn_id="spark-conn",
+    application="jobs/python/most_frequent_ids.py",
+    application_args=[
+        '/opt/data/silver/clickstream',      # path to clickstream
+    ]
+)
+
 join_job = SparkSubmitOperator(
     task_id="join_job",
     conn_id="spark-conn",
@@ -114,4 +123,4 @@ for partitioning_task in partitioning_tasks:
     for cleaning_task in cleaning_tasks:
         partitioning_task >> cleaning_task
 
-cleaning_tasks >> length_article_within_topic_job >> join_job >> end
+cleaning_tasks >> length_article_within_topic_job >> most_frequent_ids >> join_job >> end
