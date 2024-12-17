@@ -2,7 +2,7 @@ from sys import argv
 
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import Tokenizer, Word2Vec
-from pyspark.sql.functions import udf, col, length, avg, min, max, count
+from pyspark.sql.functions import col, udf
 from pyspark.sql.types import StringType
 
 from sklearn.metrics.pairwise import cosine_similarity
@@ -16,56 +16,49 @@ spark = SparkSession.builder.appName("JsonDataCleaning").getOrCreate()
 clickstream_data = spark.read.option("header", "true").csv(clickstream_data_path)
 articles_data = spark.read.json(articles_data_path)
 
-# Join for prev_id
-prev_join = clickstream_data.alias("clickstream") \
-    .join(articles_data.alias("articles"), col("clickstream.prev_id") == col("articles.id"), how="left") \
-    .select(
-        col("clickstream.prev_id"), 
-        col("clickstream.curr_id"), 
-        col("clickstream.n"), 
-        col("clickstream.prev_title"), 
-        col("clickstream.curr_title"), 
-        col("clickstream.type"), 
-        col("articles.text").alias("prev_text")
-    )
+# clickstream_data.show()
+# articles_data.show()
 
-# Join for curr_id
-data = prev_join.alias("prev_data") \
-    .join(articles_data.alias("articles"), col("prev_data.curr_id") == col("articles.id"), how="left") \
-    .select(
-        col("prev_data.prev_id"), 
-        col("prev_data.curr_id"), 
-        col("prev_data.n"), 
-        col("prev_data.prev_title"), 
-        col("prev_data.curr_title"), 
-        col("prev_data.type"), 
-        col("prev_data.prev_text"),
-        col("articles.text").alias("curr_text")
-    )
+clickstream_with_text = clickstream_data.join(
+    articles_data, 
+    clickstream_data.curr_id == articles_data.id, 
+    "inner"
+).select(
+    "prev_id", "curr_id", "n", "prev_title", "curr_title", "type", "text"
+)
 
-# List of topics to identification
+# Tokenize article texts
+tokenizer = Tokenizer(inputCol="text", outputCol="tokens")
+tokenized_articles = tokenizer.transform(clickstream_with_text)
+
+# Train Word2Vec Model
+word2vec = Word2Vec(vectorSize=100, minCount=1, inputCol="tokens", outputCol="vector")
+word2vec_model = word2vec.fit(tokenized_articles)
+
+# Transform data to include word vectors
+articles_with_vectors = word2vec_model.transform(tokenized_articles)
+
+# List of topics
 topics = [
-    "sports",
-    "history",
-    "science",
-    "technology",
-    "art",
-    "geography",
-    "literature",
-    "music",
-    "philosophy",
-    "politics",
-    "biology",
-    "physics",
-    "mathematics",
-    "economics",
-    "psychology",
-    "engineering",
-    "medicine",
-    "astronomy",
-    "education",
-    "architecture"
+    "sports", "history", "science", "technology", "art", 
+    "geography", "literature", "music", "philosophy", "politics", 
+    "biology", "physics", "mathematics", "economics", "psychology", 
+    "engineering", "medicine", "astronomy", "education", "architecture"
 ]
+
+# Create DataFrame with topics
+topics_df = spark.createDataFrame([(topic,) for topic in topics], ["topic"])
+
+# Tokenize topics
+tokenizer.setInputCol("topic")
+tokenizer.setOutputCol("tokens")
+tokenized_topics_df = tokenizer.transform(topics_df)
+
+# Generate topic vectors
+topics_with_vectors = word2vec_model.transform(tokenized_topics_df)
+
+# Collect topic vectors
+topics_vectors = [row['vector'] for row in topics_with_vectors.collect()]
 
 # Function to classify topic based on cosine similarity
 def classify_topic(vector, topics_vectors, topics):
@@ -75,39 +68,25 @@ def classify_topic(vector, topics_vectors, topics):
     max_index = np.argmax(similarities)
     return topics[max_index]
 
+# Register UDF for classification
 classify_topic_udf = udf(lambda vec: classify_topic(vec, topics_vectors, topics), StringType())
 
-# Tokenize article texts
-tokenizer = Tokenizer(inputCol="text", outputCol="tokens")
+# Add topic classification to articles
+articles_with_topics = articles_with_vectors.withColumn("topic", classify_topic_udf(col("vector")))
 
-# Apply tokenizer to the original DataFrame
-data = tokenizer.transform(articles_data)
+# Join for prev_id to get previous article's topic
+clickstream_with_topics = articles_with_topics.alias("curr").join(
+    articles_with_topics.alias("prev"),
+    col("curr.prev_id") == col("prev.curr_id"),
+    "left"
+).select(
+    col("curr.prev_id"), col("curr.curr_id"), col("curr.topic").alias("current_topic"),
+    col("prev.topic").alias("previous_topic"), col("curr.n")
+)
 
-# Train Word2Vec Model
-word2vec = Word2Vec(vectorSize=100, minCount=1, inputCol="tokens", outputCol="vector")
-model = word2vec.fit(data)
-data = model.transform(data)
+# Group by transitions and count occurrences
+clickstream_with_topics = clickstream_with_topics.withColumn("n", col("n").cast("int"))
+transitions = clickstream_with_topics.groupBy("previous_topic", "current_topic").sum("n")
 
-# Get Topic Embeddings
-topics_df = spark.createDataFrame([(topic,) for topic in topics], ["topic"])
-
-tokenizer.setInputCol("topic")
-tokenizer.setOutputCol("tokens")
-
-# Tokenize the topics DataFrame
-tokenized_topics_df = tokenizer.transform(topics_df)
-
-# Apply Word2Vec model to get vectors for the topics
-topics_df_with_vectors = model.transform(tokenized_topics_df)
-
-# Collect the topic vectors
-topics_vectors = [row['vector'] for row in topics_df_with_vectors.collect()]
-
-# Classify Articles
-data = data.withColumn("topic", classify_topic_udf(col("vector")))
-
-# Add a column for article length (e.g., length of the "text" field)
-data = data.withColumn("length", length(col("text")))
-
-# Show Data
-data.select("id", "title", "topic", "length").show()
+# Show results
+transitions.show()
