@@ -77,33 +77,14 @@ cleaning_articles_job = SparkSubmitOperator(
     dag=dag
 )
 
-length_article_within_topic_job = SparkSubmitOperator(
-    task_id="length_article_within_topic_job",
+most_frequent_ids_job = SparkSubmitOperator(
+    task_id="most_frequent_ids_job",
     conn_id="spark-conn",
-    application="jobs/python/length_article_within_topic.py",
+    application="jobs/python/most_frequent_ids_job.py",
     application_args=[
         '/opt/data/silver/clickstream',      # path to clickstream
-        '/opt/data/silver/articles'          # path to articles
-    ]
-)
-
-most_frequent_ids = SparkSubmitOperator(
-    task_id="most_frequent_ids",
-    conn_id="spark-conn",
-    application="jobs/python/most_frequent_ids.py",
-    application_args=[
-        '/opt/data/silver/clickstream',      # path to clickstream
-    ]
-)
-
-join_job = SparkSubmitOperator(
-    task_id="join_job",
-    conn_id="spark-conn",
-    application="jobs/python/join.py",
-    application_args=[
-        '/opt/data/silver/clickstream',      # path to clickstream
-        '/opt/data/silver/articles'          # path to articles
-    ]
+    ],
+    dag=dag
 )
 
 long_tail_job = SparkSubmitOperator(
@@ -112,7 +93,30 @@ long_tail_job = SparkSubmitOperator(
     application="jobs/python/long_tail_job.py",
     application_args=[
         '/opt/data/silver/clickstream',      # path to clickstream
-    ]
+    ],
+    dag=dag
+)
+
+article_lengths_job = SparkSubmitOperator(
+    task_id="article_lengths_job",
+    conn_id="spark-conn",
+    application="jobs/python/article_lengths_job.py",
+    application_args=[
+        '/opt/data/silver/clickstream',      # path to clickstream
+        '/opt/data/silver/articles'          # path to articles
+    ],
+    dag=dag
+)
+
+categories_crossings_jobs = SparkSubmitOperator(
+    task_id="categories_crossings_jobs",
+    conn_id="spark-conn",
+    application="jobs/python/categories_crossings_jobs.py",
+    application_args=[
+        '/opt/data/silver/clickstream',      # path to clickstream
+        '/opt/data/silver/articles'          # path to articles
+    ],
+    dag=dag
 )
 
 end = PythonOperator(
@@ -125,11 +129,15 @@ start >> health_check
 
 partitioning_tasks = [partitioning_clickstream_job, partitioning_articles_job]
 cleaning_tasks = [cleaning_clickstream_job, cleaning_articles_job]
+final_tasks = [article_lengths_job, most_frequent_ids_job, categories_crossings_jobs, long_tail_job]
 
 health_check >> partitioning_tasks
 
 for partitioning_task in partitioning_tasks:
-    for cleaning_task in cleaning_tasks:
-        partitioning_task >> cleaning_task
+    partitioning_task >> cleaning_tasks
 
-cleaning_tasks >> length_article_within_topic_job >> most_frequent_ids >> join_job >> long_tail_job >> end
+for cleaning_task in cleaning_tasks:
+    for final_task in final_tasks:
+        cleaning_task >> final_task
+
+final_tasks >> end

@@ -15,16 +15,16 @@ spark = SparkSession.builder.appName("ClickstreamStatistics").getOrCreate()
 # Load clickstream data
 clickstream_data = spark.read.option("header", "true").csv(clickstream_data_path)
 
-# Ścieżka do zapisania wykresu
+# Path to plot file
 output_dir = "/opt/data"
 output_path = os.path.join(output_dir, "long_tail_curve.png")
 
-# Przygotowanie danych
+# Data process
 n_values = clickstream_data.select("n").rdd.flatMap(lambda x: x).collect()
 n_values = [int(n) for n in n_values]
-n_values_sorted = np.sort(n_values)[::-1]  # Sortowanie malejące
+n_values_sorted = np.sort(n_values)[::-1]  # Descending order
 
-# Przygotowanie wykresu
+# Plot making
 plt.figure(figsize=(10, 6))
 plt.plot(n_values_sorted, linewidth=2, color='b')
 
