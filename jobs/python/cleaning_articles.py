@@ -6,13 +6,12 @@ from pyspark.sql.functions import col, trim, regexp_replace
 # Retrieve command-line arguments
 input_path = argv[1]
 output_path = argv[2]
-mode = argv[3]
 
 # Initialize a Spark session with an application name
-spark = SparkSession.builder.appName("JsonDataCleaning").getOrCreate()
+spark = SparkSession.builder.appName("ParquetDataCleaning").getOrCreate()
 
-# Read the JSON data from the specified input path
-data = spark.read.json(input_path)
+# Read the Parquet data from the specified input path
+data = spark.read.parquet(input_path)
 
 print("Data before cleaning:")
 data.show()
@@ -37,7 +36,7 @@ print("Data after cleaning:")
 data_cleaned.show()
 
 # Write the cleaned data to the specified output path in the desired mode
-data_cleaned.write.mode(mode).json(output_path)
+data_cleaned.write.mode("overwrite").parquet(output_path)
 
 # Stop the Spark session
 spark.stop()

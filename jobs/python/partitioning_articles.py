@@ -24,8 +24,8 @@ print("Data read (after partitioning):")
 data_partitioned.show()
 print(f"Number of partitions: {data_partitioned.rdd.getNumPartitions()}")
 
-# Write the partitioned data to the specified output path, overwriting any existing data
-data_partitioned.write.mode("overwrite").json(output_path)
+# Write the partitioned data to the specified output path in Parquet format, overwriting any existing data
+data_partitioned.write.mode("overwrite").parquet(output_path)
 
 # Stop the Spark session
 spark.stop()

@@ -19,8 +19,9 @@ plot_path = os.path.join(output_dir, "topic_crossings.png")
 
 spark = SparkSession.builder.appName("JsonDataCleaning").getOrCreate()
 
-clickstream_data = spark.read.option("header", "true").csv(clickstream_data_path)
-articles_data = spark.read.json(articles_data_path)
+# Read Parquet data
+clickstream_data = spark.read.parquet(clickstream_data_path)
+articles_data = spark.read.parquet(articles_data_path)
 
 clickstream_with_text = clickstream_data.join(
     articles_data, 

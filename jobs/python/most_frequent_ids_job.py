@@ -12,8 +12,8 @@ clickstream_data_path = argv[1]
 # Create a Spark session
 spark = SparkSession.builder.appName("ClickstreamStatistics").getOrCreate()
 
-# Load clickstream data
-clickstream_data = spark.read.option("header", "true").csv(clickstream_data_path)
+# Load clickstream data from Parquet
+clickstream_data = spark.read.parquet(clickstream_data_path)
 
 # Calculate statistics for prev_id with titles
 prev_id_stats = (

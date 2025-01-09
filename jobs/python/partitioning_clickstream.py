@@ -27,8 +27,8 @@ print("Data read (after partitioning):")
 data_partitioned.show()
 print(f"Number of partitions: {data_partitioned.rdd.getNumPartitions()}")
 
-# Write the partitioned data to the output path in CSV format, using the specified mode and header option
-data_partitioned.write.mode(mode).option("header", is_header).csv(output_path)
+# Write the partitioned data to the output path in Parquet format, using the specified mode
+data_partitioned.write.mode(mode).parquet(output_path)
 
 # Stop the Spark session
 spark.stop()

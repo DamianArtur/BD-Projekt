@@ -17,11 +17,12 @@ articles_data_path = argv[2]
 output_dir = "/opt/data"
 plot_path = os.path.join(output_dir, "article_lengths_plot.png")
 
-spark = SparkSession.builder.appName("JsonDataCleaning").getOrCreate()
+spark = SparkSession.builder.appName("ParquetDataProcessing").getOrCreate()
 
-articles_data = spark.read.json(articles_data_path)
+# Read articles data from Parquet file
+articles_data = spark.read.parquet(articles_data_path)
 
-# List of topics to identification
+# List of topics for identification
 topics = [
     "sports", "history", "science", "technology", "art", "geography", "literature",
     "music", "philosophy", "politics", "biology", "physics", "mathematics", "economics",

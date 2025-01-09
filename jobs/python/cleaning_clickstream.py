@@ -6,14 +6,12 @@ from pyspark.sql.functions import col, trim, regexp_replace
 # Retrieve command-line arguments
 input_path = argv[1]
 output_path = argv[2]
-is_header = argv[3]
-mode = argv[4]
 
 # Create a Spark session with the specified application name
 spark = SparkSession.builder.appName("DataCleaningAndNormalization").getOrCreate()
 
-# Load the input data as a Spark DataFrame, setting the header option dynamically
-data = spark.read.option("header", is_header).csv(input_path)
+# Load the input data as a Spark DataFrame from Parquet
+data = spark.read.parquet(input_path)
 
 # Print the data before cleaning for reference
 print("Data before cleaning:")
@@ -39,8 +37,8 @@ data_cleaned = data_cleaned.select(
 print("Data after cleaning:")
 data_cleaned.show()
 
-# Write the cleaned data to the specified output path in the desired mode
-data_cleaned.write.mode(mode).option("header", is_header).csv(output_path)
+# Write the cleaned data to the specified output path in Parquet format
+data_cleaned.write.mode("overwrite").parquet(output_path)
 
 # Stop the Spark session
 spark.stop()

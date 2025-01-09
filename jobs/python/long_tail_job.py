@@ -13,8 +13,8 @@ clickstream_data_path = argv[1]
 # Create a Spark session
 spark = SparkSession.builder.appName("ClickstreamStatistics").getOrCreate()
 
-# Load clickstream data
-clickstream_data = spark.read.option("header", "true").csv(clickstream_data_path)
+# Load clickstream data from Parquet
+clickstream_data = spark.read.parquet(clickstream_data_path)
 
 # Path to plot file
 output_dir = "/opt/data"

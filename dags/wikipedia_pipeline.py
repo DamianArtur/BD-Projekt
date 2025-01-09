@@ -30,7 +30,7 @@ partitioning_clickstream_job = SparkSubmitOperator(
     conn_id="spark-conn",
     application="jobs/python/partitioning_clickstream.py",
     application_args=[
-        '2',
+        '2',                                 # number of paritions
         '/opt/data/sample/clickstream',      # input_path
         '/opt/data/bronze/clickstream',      # output_path
         '\t',                                # delimiter
@@ -45,7 +45,7 @@ partitioning_articles_job = SparkSubmitOperator(
     conn_id="spark-conn",
     application="jobs/python/partitioning_articles.py",
     application_args=[
-        '2',
+        '2',                                 # number of paritions
         '/opt/data/sample/articles',         # input_path
         '/opt/data/bronze/articles'          # output_pat
     ],
@@ -59,8 +59,6 @@ cleaning_clickstream_job = SparkSubmitOperator(
     application_args=[
         '/opt/data/bronze/clickstream',      # input_path
         '/opt/data/silver/clickstream',      # output_path
-        'true',                              # is_header
-        'overwrite'                          # mode
     ],
     dag=dag
 )
@@ -72,7 +70,6 @@ cleaning_articles_job = SparkSubmitOperator(
     application_args=[
         '/opt/data/bronze/articles',         # input_path
         '/opt/data/silver/articles',         # output_path
-        'overwrite'                          # mode
     ],
     dag=dag
 )
