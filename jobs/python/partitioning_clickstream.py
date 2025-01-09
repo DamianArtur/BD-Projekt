@@ -1,13 +1,7 @@
 from sys import argv
 from pyspark.sql import SparkSession
 
-# Retrieve command-line arguments:
-# - `number_of_partitions`: Number of partitions to use for the data
-# - `input_path`: Path to the input CSV file(s)
-# - `output_path`: Path to save the partitioned output CSV file(s)
-# - `delimiter`: Character used to separate values in the input CSV file
-# - `mode`: Write mode for the output file (e.g., "overwrite" or "append")
-# - `is_header`: Boolean indicating if the output file should include a header row
+# Retrieve command-line arguments
 number_of_partitions = int(argv[1])
 input_path = argv[2]
 output_path = argv[3]
@@ -36,5 +30,5 @@ print(f"Number of partitions: {data_partitioned.rdd.getNumPartitions()}")
 # Write the partitioned data to the output path in CSV format, using the specified mode and header option
 data_partitioned.write.mode(mode).option("header", is_header).csv(output_path)
 
-# Stop the Spark session to free up resources
+# Stop the Spark session
 spark.stop()

@@ -1,15 +1,21 @@
+import os
 from sys import argv
 
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import Tokenizer, Word2Vec
-from pyspark.sql.functions import udf, col, length, avg, min, max, count
+from pyspark.sql.functions import udf, col, length, avg, min, max, count, round
 from pyspark.sql.types import StringType
 
-from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics.pairwise import cosine_similarity
 
 clickstream_data_path = argv[1]
 articles_data_path = argv[2]
+
+# Set the output directory
+output_dir = "/opt/data"
+plot_path = os.path.join(output_dir, "article_lengths_plot.png")
 
 spark = SparkSession.builder.appName("JsonDataCleaning").getOrCreate()
 
@@ -17,26 +23,9 @@ articles_data = spark.read.json(articles_data_path)
 
 # List of topics to identification
 topics = [
-    "sports",
-    "history",
-    "science",
-    "technology",
-    "art",
-    "geography",
-    "literature",
-    "music",
-    "philosophy",
-    "politics",
-    "biology",
-    "physics",
-    "mathematics",
-    "economics",
-    "psychology",
-    "engineering",
-    "medicine",
-    "astronomy",
-    "education",
-    "architecture"
+    "sports", "history", "science", "technology", "art", "geography", "literature",
+    "music", "philosophy", "politics", "biology", "physics", "mathematics", "economics",
+    "psychology", "engineering", "medicine", "astronomy", "education", "architecture"
 ]
 
 # Function to classify topic based on cosine similarity
@@ -81,20 +70,34 @@ data = data.withColumn("topic", classify_topic_udf(col("vector")))
 # Add a column for article length (e.g., length of the "text" field)
 data = data.withColumn("length", length(col("text")))
 
-# Group by topic and compute statistics
+# Group by topic and compute statistics, rounding the numbers to 2 decimal places
 stats = (
     data.groupBy("topic")
     .agg(
         count("*").alias("article_count"),
-        avg("length").alias("avg_length"),
-        min("length").alias("min_length"),
-        max("length").alias("max_length")
+        round(avg("length"), 2).alias("avg_length"),
+        round(min("length"), 2).alias("min_length"),
+        round(max("length"), 2).alias("max_length")
     )
     .orderBy("article_count", ascending=False)
 )
 
-# Show Data
-data.select("id", "title", "topic", "length").show()
+# Collect the statistics for plotting
+stats_df = stats.toPandas()
+
+# Plotting the statistics using Matplotlib
+fig, ax = plt.subplots(figsize=(10, 6))
+stats_df.plot(kind='bar', x='topic', y=['article_count', 'avg_length', 'min_length', 'max_length'],
+              ax=ax, width=0.8, stacked=False)
+plt.title("Article Statistics by Topic")
+plt.xlabel("Topic")
+plt.ylabel("Values")
+plt.xticks(rotation=90, ha="center")
+plt.tight_layout()
+ax.set_yscale('log')
+
+# Save the plot as an image
+plt.savefig(plot_path)
 
 # Show the statistics
 stats.show(truncate=False)

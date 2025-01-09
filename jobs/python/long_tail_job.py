@@ -7,6 +7,7 @@ from pyspark.sql import functions as F
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Retrieve command-line arguments
 clickstream_data_path = argv[1]
 
 # Create a Spark session

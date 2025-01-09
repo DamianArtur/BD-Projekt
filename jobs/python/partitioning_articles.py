@@ -1,10 +1,7 @@
 from sys import argv
 from pyspark.sql import SparkSession
 
-# Retrieve command-line arguments:
-# - `number_of_partitions`: The number of partitions to use for the data
-# - `input_path`: Path to the input JSON file(s)
-# - `output_path`: Path to save the partitioned output JSON file(s)
+# Retrieve command-line arguments
 number_of_partitions = int(argv[1])
 input_path = argv[2]
 output_path = argv[3]
@@ -30,5 +27,5 @@ print(f"Number of partitions: {data_partitioned.rdd.getNumPartitions()}")
 # Write the partitioned data to the specified output path, overwriting any existing data
 data_partitioned.write.mode("overwrite").json(output_path)
 
-# Stop the Spark session to free up resources
+# Stop the Spark session
 spark.stop()

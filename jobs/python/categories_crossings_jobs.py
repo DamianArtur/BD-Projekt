@@ -1,3 +1,4 @@
+import os
 from sys import argv
 
 from pyspark.sql import SparkSession
@@ -5,19 +6,21 @@ from pyspark.ml.feature import Tokenizer, Word2Vec
 from pyspark.sql.functions import col, udf
 from pyspark.sql.types import StringType
 
-from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics.pairwise import cosine_similarity
 
 clickstream_data_path = argv[1]
 articles_data_path = argv[2]
+
+# Set the output directory
+output_dir = "/opt/data"
+plot_path = os.path.join(output_dir, "topic_crossings.png")
 
 spark = SparkSession.builder.appName("JsonDataCleaning").getOrCreate()
 
 clickstream_data = spark.read.option("header", "true").csv(clickstream_data_path)
 articles_data = spark.read.json(articles_data_path)
-
-# clickstream_data.show()
-# articles_data.show()
 
 clickstream_with_text = clickstream_data.join(
     articles_data, 
@@ -88,5 +91,33 @@ clickstream_with_topics = articles_with_topics.alias("curr").join(
 clickstream_with_topics = clickstream_with_topics.withColumn("n", col("n").cast("int"))
 transitions = clickstream_with_topics.groupBy("previous_topic", "current_topic").sum("n")
 
-# Show results
-transitions.show()
+# Convert to Pandas DataFrame
+transitions_df = transitions.toPandas()
+
+# Pivot data for heatmap and treat missing values as zero
+heatmap_data = transitions_df.pivot(index="previous_topic", columns="current_topic", values="sum(n)").fillna(0)
+
+# Make log transformation on data for better visibility
+heatmap_data_log = np.log1p(heatmap_data)
+
+# Plot heatmap using matplotlib
+fig, ax = plt.subplots(figsize=(10, 8))
+cax = ax.matshow(heatmap_data_log, cmap="YlGnBu")
+
+# Add color bar
+fig.colorbar(cax)
+
+# Set axis labels
+ax.set_xticks(np.arange(len(heatmap_data.columns)))
+ax.set_yticks(np.arange(len(heatmap_data.index)))
+
+ax.set_xticklabels(heatmap_data.columns, rotation=90)
+ax.set_yticklabels(heatmap_data.index)
+
+# Set labels and title
+plt.xlabel("Current Topic")
+plt.ylabel("Previous Topic")
+plt.title("Topic Transition Heatmap")
+
+# Save plot as PNG
+plt.savefig(plot_path)
